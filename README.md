@@ -1,20 +1,13 @@
 # 此工具目标
-模拟NewBing的搜索操作,搜索飞书内网文档，并返回结果
-
-# Show
-![查询文档](img/show.png)
-
-# 备注
-1. 没有用langchian。是go的langchain库(golangchian)等同于残废。确实只有python的库比较好。   
-2. 代码质量确实比较差。暂时没有优化使用。谨慎使用
-3. 本人只测试过Azure的gpt-3.5-turbo 其他模型有bug可以反馈
+本工具作为内部飞书继承使用的OpenAi文档搜索工具
 
 # 工具流程
 0. 用户进行登录
-1. 用户的输入进入ChatGPT进行翻译(辅助API文档)
-2. 调用飞书的API进行搜索
-3. 把结果分析给ChatGPT
-4. 得出结果返回给用户
+1. 用户的回答看看GPT是否能直接回答
+2. 用户的输入进入OpenAI进行翻译(搜索)
+3. 生成相应的关键词。调用飞书的API进行搜索(function calls)
+4. 把结果文件都丢给OpenAi..文件进行学习。(add files and knowledge)
+5. 得出结果返回给用户..
 
 # 配置
 机器人调用地址为 http://ip:port/event  
