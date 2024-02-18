@@ -4,11 +4,11 @@ COPY . .
 ENV GOPROXY https://goproxy.cn,direct
 ENV GOPRIVATE git.laiye.com
 RUN go mod download
-RUN go build -o dist/feishu_sre_bot main.go
+RUN go build -o /src/dist/lark_sre_bot main.go
 
-FROM alpine:3.36
+FROM alpine:3.16
 WORKDIR /app/
-COPY --from=builder  /src/dist/feishu_sre_bot /app/feishu_sre_bot
+COPY --from=builder  /src/dist/lark_sre_bot /app/lark_sre_bot
 VOLUME /app/.feishu.env
 VOLUME /app/.chatgpt.env
-ENTRYPOINT ["/app/feishu_gpt_search"]
+ENTRYPOINT ["/app/lark_sre_bot"]

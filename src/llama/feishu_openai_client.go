@@ -30,6 +30,9 @@ func (assistant *FeiShuAssistant) UploadFile(url string, args map[string]string)
 		Purpose:  "assistants",
 	}
 	assistantFile, err := assistant.openAiClient.CreateFile(assistant.ctx, request)
+	if err != nil {
+		return err
+	}
 	rsp, err := assistant.openAiClient.CreateAssistantFile(
 		assistant.ctx,
 		assistant.assistantId,
@@ -54,15 +57,14 @@ func (assistant *FeiShuAssistant) ExtractMessage(listMessages openai.MessagesLis
 		infoMsg = infoMsg + "\r" + messageContent.Value
 	}
 	links := map[string]string{}
-
 	return infoMsg, links
 }
 
 func (assistant *FeiShuAssistant) AskQuestion(msgId string, question string, args map[string]string) (string, map[string]string, error) {
 	var threadId string
 	metadata := map[string]any{}
-	if threadId, ok := assistant.chatThreadMap[msgId]; ok {
-
+	if threadIdd, ok := assistant.chatThreadMap[msgId]; ok {
+		threadId = threadIdd
 	} else {
 		thread, err := assistant.openAiClient.CreateThread(assistant.ctx, openai.ThreadRequest{
 			Metadata: metadata,
@@ -78,28 +80,34 @@ func (assistant *FeiShuAssistant) AskQuestion(msgId string, question string, arg
 		}(threadId, msgId)
 		assistant.chatThreadMap[msgId] = threadId
 	}
+	//启动message
 	messageRsp, err := assistant.openAiClient.CreateMessage(assistant.ctx, threadId, openai.MessageRequest{
 		Content: question,
-		//FileIds: 应该不需要,
-		Role:     "user",
-		Metadata: metadata,
+		Role:    "user",
 	})
+	if err != nil {
+		return "", nil, err
+	}
 	messageId := messageRsp.ID
 
+	//启动run
 	runResponse, err := assistant.openAiClient.CreateRun(assistant.ctx, threadId, openai.RunRequest{
-		AssistantID: assistant.assistantId,
+		AssistantID:  assistant.assistantId,
+		Model:        "gpt-4-turbo-preview",
+		Instructions: "你是一个来也的私有化部署服务员.你能准确的按步骤一步步指导客户去安装来也的各种私有化部署的服务.并帮助客户解决各种私有化面对的问题",
 	})
 	if err != nil {
 		return "", nil, err
 	}
 	responseId := runResponse.ID
+
 	loopTime := 0
 	for {
+		time.Sleep(2 * time.Second)
 		loopTime = loopTime + 1
 		if loopTime >= 10 {
 			return "", nil, errors.New("超时")
 		}
-		time.Sleep(1 * time.Second)
 		response, err := assistant.openAiClient.RetrieveRun(assistant.ctx, threadId, responseId)
 		if err != nil {
 			return "", nil, err
@@ -108,6 +116,7 @@ func (assistant *FeiShuAssistant) AskQuestion(msgId string, question string, arg
 			continue
 		} else if response.Status == openai.RunStatusRequiresAction {
 			log.Printf("required action unsupported")
+			return "", nil, err
 		} else if response.Status == openai.RunStatusCompleted {
 			order := "asc"
 			messageLists, err := assistant.openAiClient.ListMessage(assistant.ctx, threadId, nil, &order, &messageId, nil)
@@ -122,7 +131,6 @@ func (assistant *FeiShuAssistant) AskQuestion(msgId string, question string, arg
 		}
 
 	}
-	//
 	return "", nil, errors.New("不应该触发的情况")
 }
 
@@ -131,9 +139,10 @@ func NewFeishuAssistant(config *chatgpt.Config, feishuClient *feishu.FeishuClien
 	openAiConfig.BaseURL = config.APIServer
 	client := openai.NewClientWithConfig(openAiConfig)
 	return &FeiShuAssistant{
-		openAiClient: client,
-		feishuClient: feishuClient,
-		ctx:          feishuClient.Ctx,
-		assistantId:  os.Getenv("CHATGPT_ASSISTANT_ID"),
+		openAiClient:  client,
+		feishuClient:  feishuClient,
+		ctx:           feishuClient.Ctx,
+		assistantId:   os.Getenv("CHATGPT_ASSISTANT_ID"),
+		chatThreadMap: make(map[string]string),
 	}
 }

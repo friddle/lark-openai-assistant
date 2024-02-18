@@ -10,3 +10,4 @@ cache
 answer_record.txt
 src/sample.txt
 build_local.sh
+tmp/
