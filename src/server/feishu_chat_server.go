@@ -195,7 +195,7 @@ func FeishuServer(feishuConf *chatbot.Config, assistantClient llama.AssistantCli
 
 	bot.OnCommand("clean", &chatbot.Command{
 		Handler: func(args []string, request *feishuEvent.EventRequest, reply chatbot.MessageReply) error {
-			assistantClient.Clean()
+			assistantClient.CleanAll()
 			ReplyText(reply, "清理成功")
 			return nil
 		},
