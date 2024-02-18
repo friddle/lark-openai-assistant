@@ -5,6 +5,7 @@ import (
 	"feishu-gpt-search/src/config"
 	"feishu-gpt-search/src/feishu"
 	"fmt"
+	"github.com/go-zoox/logger"
 	"testing"
 )
 
@@ -27,8 +28,9 @@ func TestUpload(t *testing.T) {
 
 func TestAskQuestion(t *testing.T) {
 	client := getClient()
-	_, _, err := client.AskQuestion("1000", "IDP大概怎么部署?", map[string]string{})
+	answer, _, err := client.AskQuestion("1000", "IDP大概怎么部署?", map[string]string{})
 	if err != nil {
 		t.Error(err)
 	}
+	logger.Info(answer)
 }

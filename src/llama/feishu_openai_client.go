@@ -60,6 +60,10 @@ func (assistant *FeiShuAssistant) ExtractMessage(listMessages openai.MessagesLis
 	return infoMsg, links
 }
 
+func (assistant *FeiShuAssistant) CleanAll() error {
+	return nil
+}
+
 func (assistant *FeiShuAssistant) AskQuestion(msgId string, question string, args map[string]string) (string, map[string]string, error) {
 	var threadId string
 	metadata := map[string]any{}
@@ -74,7 +78,7 @@ func (assistant *FeiShuAssistant) AskQuestion(msgId string, question string, arg
 			return "", nil, err
 		}
 		go func(threadId string, msgId string) {
-			time.Sleep(1 * time.Hour)
+			time.Sleep(5 * 24 * time.Hour)
 			assistant.openAiClient.DeleteThread(assistant.ctx, threadId)
 			delete(assistant.chatThreadMap, msgId)
 		}(threadId, msgId)
@@ -103,9 +107,9 @@ func (assistant *FeiShuAssistant) AskQuestion(msgId string, question string, arg
 
 	loopTime := 0
 	for {
-		time.Sleep(2 * time.Second)
+		time.Sleep(5 * time.Second)
 		loopTime = loopTime + 1
-		if loopTime >= 10 {
+		if loopTime >= 30 {
 			return "", nil, errors.New("超时")
 		}
 		response, err := assistant.openAiClient.RetrieveRun(assistant.ctx, threadId, responseId)

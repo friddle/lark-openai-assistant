@@ -193,6 +193,14 @@ func FeishuServer(feishuConf *chatbot.Config, assistantClient llama.AssistantCli
 		},
 	})
 
+	bot.OnCommand("clean", &chatbot.Command{
+		Handler: func(args []string, request *feishuEvent.EventRequest, reply chatbot.MessageReply) error {
+			assistantClient.Clean()
+			ReplyText(reply, "清理成功")
+			return nil
+		},
+	})
+
 	bot.OnMessage(func(text string, request *event.EventRequest, reply chatbot.MessageReply) error {
 		question := getText(feishuClient, text, request)
 		if question == "" {
@@ -202,10 +210,11 @@ func FeishuServer(feishuConf *chatbot.Config, assistantClient llama.AssistantCli
 			logger.Infof("ignore empty command message")
 			return nil
 		}
+		ReplyText(reply, "正在查询中，请稍后(大概5-10秒左右).请勿重复发送")
 		result, links, err := assistantClient.AskQuestion(request.Event.Message.ChatID, question, nil)
 		questions := map[string]string{}
 		if err != nil {
-			ReplyText(reply, fmt.Sprintf("询问失败%v", err))
+			ReplyText(reply, fmt.Sprintf("询问失败:%v", err))
 		}
 		ReplyTextWithLinks(reply, result, links, questions)
 		return nil
