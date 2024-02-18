@@ -2,11 +2,17 @@ package feishu
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/88250/lute"
 	"github.com/chyroc/lark"
 	"io"
+	"log"
 	"os"
+	"path"
 	"path/filepath"
+	"regexp"
+	"strings"
 )
 
 func (c *FeishuClient) GetDocContent(docToken string, options ...lark.MethodOptionFunc) (*lark.DocContent, error) {
@@ -125,6 +131,78 @@ func (c *FeishuClient) GetWikiNodeList(spaceId string, parentNodeToken *string, 
 		return nil, nil, err
 	}
 	return resp.Items, nil, nil
+}
+
+func (c *FeishuClient) GetDocumentByUrl(url string) (string, string, error) {
+	reg := regexp.MustCompile("^https://[a-zA-Z0-9-]+.(feishu.cn|larksuite.com)/(docs|docx|wiki)/([a-zA-Z0-9]+)")
+	matchResult := reg.FindStringSubmatch(url)
+	if matchResult == nil || len(matchResult) != 4 {
+		return "", "", errors.New(fmt.Sprintf("Invalid feishu/larksuite URL format %s", url))
+	}
+	docType := matchResult[2]
+	nodeToken := matchResult[3]
+	parser := NewParser(c.Ctx)
+	if docType == "wiki" {
+		node, err := c.GetWikiNodeInfo(nodeToken)
+		if err != nil {
+			return "", "", err
+		}
+		docType = node.ObjType
+		nodeToken = node.ObjToken
+	}
+
+	markdown := ""
+	title := ""
+	if docType == "doc" {
+		doc, err := c.GetDocContent(nodeToken)
+		if err != nil {
+			if strings.Contains(fmt.Sprintf("%v", err), "forBidden") {
+				log.Printf("download docx failed %v,doc:%s", err, nodeToken)
+			}
+			log.Fatalf("download docx failed %v,doc:%s", err, nodeToken)
+			return "", "", err
+		}
+		markdown = parser.ParseDocContent(doc)
+		for _, element := range doc.Title.Elements {
+			title += element.TextRun.Text
+		}
+	}
+	if docType == "docx" {
+		docx, blocks, err := c.GetDocxContent(nodeToken)
+		if err != nil {
+			if strings.Contains(fmt.Sprintf("%v", err), "forBidden") {
+				log.Printf("download docx failed %v,doc:%s", err, nodeToken)
+			}
+			log.Fatalf("download docx failed %v,doc:%s", err, nodeToken)
+			return "", "", err
+		}
+		markdown = parser.ParseDocxContent(docx, blocks)
+		title = docx.Title
+	}
+
+	for _, imgToken := range parser.ImgTokens {
+		localLink, err := c.DownloadImage(imgToken)
+		if err != nil {
+			return "", "", err
+		}
+		markdown = strings.Replace(markdown, imgToken, localLink, 1)
+	}
+
+	engine := lute.New(func(l *lute.Lute) {
+		l.RenderOptions.AutoSpace = true
+	})
+	result := engine.FormatStr("md", markdown)
+	if title == "" {
+		title = nodeToken
+	}
+	mdName := fmt.Sprintf("%s.md", title)
+	mdPath := path.Join(c.CacheDir, mdName)
+	os.MkdirAll(c.CacheDir, 0o766)
+	if err := os.WriteFile(mdPath, []byte(result), 0o777); err != nil {
+		log.Fatalf("write markdown error %v", err)
+	}
+	fmt.Printf("Downloaded markdown file to %s\n", mdName)
+	return mdName, mdPath, nil
 }
 
 func TestDocuments() {

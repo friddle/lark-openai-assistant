@@ -3,6 +3,7 @@ module feishu-gpt-search
 go 1.20
 
 require (
+	github.com/88250/lute v1.7.3
 	github.com/Wsine/feishu2md v1.4.0
 	github.com/chyroc/lark v0.0.111
 	github.com/elliotchance/orderedmap v1.5.0
@@ -11,17 +12,18 @@ require (
 	github.com/go-zoox/core-utils v1.2.10
 	github.com/go-zoox/feishu v1.3.11
 	github.com/go-zoox/logger v1.4.4
-	github.com/go-zoox/uuid v0.0.1
 	github.com/go-zoox/zoox v1.7.16
 	github.com/grokify/html-strip-tags-go v0.0.1
 	github.com/joho/godotenv v1.5.1
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/tmc/langchaingo v0.0.0-20230724184611-3f372d1beb9d
+	github.com/sashabaranov/go-openai v1.19.4
 	gopkg.in/yaml.v2 v2.4.0
 )
 
 require (
+	github.com/alecthomas/chroma v0.9.2 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
+	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/dlclark/regexp2 v1.8.1 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
@@ -51,12 +53,14 @@ require (
 	github.com/go-zoox/safe v1.0.1 // indirect
 	github.com/go-zoox/session v1.0.6 // indirect
 	github.com/go-zoox/tag v1.2.0 // indirect
+	github.com/go-zoox/uuid v0.0.1 // indirect
 	github.com/google/uuid v1.3.0 // indirect
+	github.com/gopherjs/gopherjs v0.0.0-20210619142842-05447a1fa367 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/pkoukk/tiktoken-go v0.1.2 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
+	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/tidwall/gjson v1.14.4 // indirect
 	github.com/tidwall/match v1.1.1 // indirect

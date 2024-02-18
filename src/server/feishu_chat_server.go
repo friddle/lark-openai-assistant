@@ -12,7 +12,6 @@ import (
 	feishuEvent "github.com/go-zoox/feishu/event"
 	mc "github.com/go-zoox/feishu/message/content"
 	"github.com/go-zoox/logger"
-	"regexp"
 	"strings"
 )
 
@@ -130,7 +129,7 @@ func ReplyTextWithLinks(reply func(context string, msgType ...string) error, tex
 	return nil
 }
 
-func FeishuServer(feishuConf *chatbot.Config, searchClient *llama.SearchChainClient, feishuClient *feishu.FeishuClient) (chatbot.ChatBot, error) {
+func FeishuServer(feishuConf *chatbot.Config, assistantClient llama.AssistantClient, feishuClient *feishu.FeishuClient) (chatbot.ChatBot, error) {
 	bot, err := chatbot.New(feishuConf)
 	if err != nil {
 		logger.Errorf("failed to create bot: %v", err)
@@ -184,6 +183,15 @@ func FeishuServer(feishuConf *chatbot.Config, searchClient *llama.SearchChainCli
 			return nil
 		},
 	})
+	bot.OnCommand("upload", &chatbot.Command{
+		Handler: func(args []string, request *event.EventRequest, reply chatbot.MessageReply) error {
+			err := assistantClient.UploadFile(args[0], nil)
+			if err != nil {
+				ReplyText(reply, fmt.Sprintf("上传失败%v", err))
+			}
+			return nil
+		},
+	})
 
 	bot.OnMessage(func(text string, request *event.EventRequest, reply chatbot.MessageReply) error {
 		question := getText(feishuClient, text, request)
@@ -194,28 +202,12 @@ func FeishuServer(feishuConf *chatbot.Config, searchClient *llama.SearchChainCli
 			logger.Infof("ignore empty command message")
 			return nil
 		}
-
-		argsMap := map[string]string{}
-		args := strings.Split(question, " ")
-		for _, arg := range args {
-			if strings.Contains(arg, "--") {
-				argItem := strings.Split(strings.Replace(arg, "--", "", -1), "=")
-				if len(argItem) != 2 {
-					ReplyText(reply, fmt.Sprintf("参数错误 %s,参数设置应该为 --searchKey=xxx", arg))
-					return nil
-				}
-				argsMap[argItem[0]] = argItem[1]
-			}
+		result, links, err := assistantClient.AskQuestion(request.Event.Message.ChatID, question, nil)
+		questions := map[string]string{}
+		if err != nil {
+			ReplyText(reply, fmt.Sprintf("询问失败%v", err))
 		}
-		re := regexp.MustCompile(`--\w+=\w+`)
-		questionPure := re.ReplaceAllString(question, "")
-		context, _ := searchClient.GetContext(request.Event.Message.RootID, request.Event.Sender.SenderID.UserID, argsMap)
-		searchClient.Search(context, questionPure, func(isAuth bool, content string, question map[string]string, links map[string]string, err error) {
-			if !isAuth {
-				authHandler([]string{}, request, reply)
-			}
-			ReplyTextWithLinks(reply, content, links, question)
-		})
+		ReplyTextWithLinks(reply, result, links, questions)
 		return nil
 	})
 	return bot, nil
