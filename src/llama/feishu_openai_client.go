@@ -96,9 +96,12 @@ func (assistant *FeiShuAssistant) AskQuestion(msgId string, question string, arg
 
 	//启动run
 	runResponse, err := assistant.openAiClient.CreateRun(assistant.ctx, threadId, openai.RunRequest{
-		AssistantID:  assistant.assistantId,
-		Model:        "gpt-4-turbo-preview",
-		Instructions: "你是一个来也的私有化部署服务员.你能准确的按步骤一步步指导客户去安装来也的各种私有化部署的服务.并帮助客户解决各种私有化面对的问题",
+		AssistantID: assistant.assistantId,
+		Model:       "gpt-4-turbo-preview",
+		Instructions: "You are a  programmer. " +
+			"Your goal is to accurately guide customers step by step to install various laiye services and help them solve problems encountered during private deployment." +
+			"All answers to questions are found in the documentation. If not found in the documentation, reply directly with \"我不知道\"." +
+			"last use chinese",
 	})
 	if err != nil {
 		return "", nil, err
