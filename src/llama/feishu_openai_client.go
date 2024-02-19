@@ -4,19 +4,21 @@ import (
 	"context"
 	"errors"
 	"feishu-gpt-search/src/feishu"
+	"feishu-gpt-search/src/utils"
 	chatgpt "github.com/go-zoox/chatgpt-client"
 	"github.com/sashabaranov/go-openai"
 	"log"
-	"os"
 	"time"
 )
 
 type FeiShuAssistant struct {
-	openAiClient  *openai.Client
-	feishuClient  *feishu.FeishuClient
-	assistantId   string
-	ctx           context.Context
-	chatThreadMap map[string]string
+	openAiClient         *openai.Client
+	feishuClient         *feishu.FeishuClient
+	assistantId          string
+	assistantInstruction string
+	assistantModel       string
+	ctx                  context.Context
+	chatThreadMap        map[string]string
 }
 
 func (assistant *FeiShuAssistant) UploadFile(url string, args map[string]string) error {
@@ -60,7 +62,18 @@ func (assistant *FeiShuAssistant) ExtractMessage(listMessages openai.MessagesLis
 	return infoMsg, links
 }
 
+func (assistant *FeiShuAssistant) CleanMsgId(msgId string) error {
+	if threadId, ok := assistant.chatThreadMap[msgId]; ok {
+		assistant.openAiClient.DeleteThread(assistant.ctx, threadId)
+		delete(assistant.chatThreadMap, msgId)
+	} else {
+
+	}
+	return nil
+}
+
 func (assistant *FeiShuAssistant) CleanAll() error {
+
 	return nil
 }
 
@@ -98,7 +111,7 @@ func (assistant *FeiShuAssistant) AskQuestion(msgId string, question string, arg
 	runResponse, err := assistant.openAiClient.CreateRun(assistant.ctx, threadId, openai.RunRequest{
 		AssistantID: assistant.assistantId,
 		Model:       "gpt-4-turbo-preview",
-		Instructions: "You are a  programmer. " +
+		Instructions: "You are a programmer. " +
 			"Your goal is to accurately guide customers step by step to install various laiye services and help them solve problems encountered during private deployment." +
 			"All answers to questions are found in the documentation. If not found in the documentation, reply directly with \"我不知道\"." +
 			"last use chinese",
@@ -141,15 +154,23 @@ func (assistant *FeiShuAssistant) AskQuestion(msgId string, question string, arg
 	return "", nil, errors.New("不应该触发的情况")
 }
 
-func NewFeishuAssistant(config *chatgpt.Config, feishuClient *feishu.FeishuClient) AssistantClient {
+func NewFeishuAssistant(config *chatgpt.Config, feishuClient *feishu.FeishuClient) (AssistantClient, error) {
 	openAiConfig := openai.DefaultConfig(config.APIKey)
 	openAiConfig.BaseURL = config.APIServer
 	client := openai.NewClientWithConfig(openAiConfig)
-	return &FeiShuAssistant{
-		openAiClient:  client,
-		feishuClient:  feishuClient,
-		ctx:           feishuClient.Ctx,
-		assistantId:   os.Getenv("CHATGPT_ASSISTANT_ID"),
-		chatThreadMap: make(map[string]string),
+
+	assistantId := utils.GetOsEnv("CHATGPT_ASSISTANT_ID", "")
+	if assistantId == "" {
+		return nil, errors.New("assistant id 不能为空")
 	}
+
+	return &FeiShuAssistant{
+		openAiClient:         client,
+		feishuClient:         feishuClient,
+		ctx:                  feishuClient.Ctx,
+		assistantId:          utils.GetOsEnv("CHATGPT_ASSISTANT_ID", ""),
+		assistantInstruction: utils.GetOsEnv("CHATGPT_ASSISTANT_INSTRUCTION", "你是一个智能助手.你需要通过文档的回答客户的各种问题."),
+		assistantModel:       utils.GetOsEnv("CHATGPT_ASSISTANT_MODEL", "gpt-4-turbo-preview"),
+		chatThreadMap:        make(map[string]string),
+	}, nil
 }
